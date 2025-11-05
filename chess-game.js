@@ -21,8 +21,9 @@ class ChessGame {
         this.visibleCells = new Set();
         
         // Загрузка изображений
-        this.pieceImages = this.loadPieceImages();
-        this.fogImage = this.loadFogImage();
+        this.imagesLoaded = false;
+        this.pieceImages = {};
+        this.fogImage = null;
         
         // Таймеры (10 минут в секундах)
         this.timers = {
@@ -34,37 +35,76 @@ class ChessGame {
         
         this.initializeBoard();
         this.updateVisibleCells();
-        this.startTimer();
-        this.drawBoard();
+        
+        // Загружаем изображения и только потом инициализируем игру
+        this.loadAllImages().then(() => {
+            this.imagesLoaded = true;
+            this.startTimer();
+            this.drawBoard();
+            this.updateGameInfo();
+        });
     }
     
     /**
-     * Загрузка изображений фигур
+     * Загрузка всех изображений с ожиданием завершения
+     */
+    async loadAllImages() {
+        await this.loadPieceImages();
+        await this.loadFogImage();
+    }
+    
+    /**
+     * Загрузка изображений фигур с ожиданием завершения
      */
     loadPieceImages() {
-        const images = {};
-        const pieces = ['P', 'N', 'B', 'R', 'Q', 'K'];
-        const colors = ['white', 'black'];
-        
-        pieces.forEach(piece => {
-            colors.forEach(color => {
-                const img = new Image();
-                // Используем ваши файлы с изображениями
-                img.src = `images/${color === 'white' ? '0' : '1'}${piece}.png`;
-                images[`${color}_${piece}`] = img;
+        return new Promise((resolve) => {
+            const pieces = ['P', 'N', 'B', 'R', 'Q', 'K'];
+            const colors = ['white', 'black'];
+            let imagesToLoad = pieces.length * colors.length;
+            let imagesLoaded = 0;
+            
+            const checkAllLoaded = () => {
+                imagesLoaded++;
+                if (imagesLoaded === imagesToLoad) {
+                    resolve();
+                }
+            };
+            
+            pieces.forEach(piece => {
+                colors.forEach(color => {
+                    const img = new Image();
+                    img.onload = checkAllLoaded;
+                    img.onerror = () => {
+                        console.warn(`Не удалось загрузить изображение: images/${color === 'white' ? '0' : '1'}${piece}.png`);
+                        checkAllLoaded();
+                    };
+                    // Используем ваши файлы с изображениями
+                    img.src = `images/${color === 'white' ? '0' : '1'}${piece}.png`;
+                    this.pieceImages[`${color}_${piece}`] = img;
+                });
             });
+            
+            // Если нет изображений для загрузки, сразу резолвим
+            if (imagesToLoad === 0) {
+                resolve();
+            }
         });
-        
-        return images;
     }
     
     /**
-     * Загрузка изображения тумана войны
+     * Загрузка изображения тумана войны с ожиданием завершения
      */
     loadFogImage() {
-        const img = new Image();
-        img.src = 'images/fog.png';
-        return img;
+        return new Promise((resolve) => {
+            this.fogImage = new Image();
+            this.fogImage.onload = resolve;
+            this.fogImage.onerror = () => {
+                console.warn('Не удалось загрузить изображение тумана: images/fog.png');
+                this.fogImage = null;
+                resolve();
+            };
+            this.fogImage.src = 'images/fog.png';
+        });
     }
     
     /**
@@ -131,33 +171,35 @@ class ChessGame {
         const whiteTimer = document.getElementById('white-timer');
         const blackTimer = document.getElementById('black-timer');
         
-        // Обновляем время
-        whiteTimer.textContent = this.formatTime(this.timers[0]);
-        blackTimer.textContent = this.formatTime(this.timers[1]);
-        
-        // Сбрасываем стили
-        whiteTimer.className = 'timer';
-        blackTimer.className = 'timer';
-        
-        // Подсвечиваем активный таймер
-        if (this.currentTimer === 0) {
-            whiteTimer.classList.add('active');
-        } else {
-            blackTimer.classList.add('active');
-        }
-        
-        // Предупреждения при малом времени
-        if (this.timers[0] <= 30 && this.timers[0] > 0) {
-            whiteTimer.classList.add('warning');
-        }
-        if (this.timers[1] <= 30 && this.timers[1] > 0) {
-            blackTimer.classList.add('warning');
-        }
-        if (this.timers[0] <= 10 && this.timers[0] > 0) {
-            whiteTimer.classList.add('danger');
-        }
-        if (this.timers[1] <= 10 && this.timers[1] > 0) {
-            blackTimer.classList.add('danger');
+        if (whiteTimer && blackTimer) {
+            // Обновляем время
+            whiteTimer.textContent = this.formatTime(this.timers[0]);
+            blackTimer.textContent = this.formatTime(this.timers[1]);
+            
+            // Сбрасываем стили
+            whiteTimer.className = 'timer';
+            blackTimer.className = 'timer';
+            
+            // Подсвечиваем активный таймер
+            if (this.currentTimer === 0) {
+                whiteTimer.classList.add('active');
+            } else {
+                blackTimer.classList.add('active');
+            }
+            
+            // Предупреждения при малом времени
+            if (this.timers[0] <= 30 && this.timers[0] > 0) {
+                whiteTimer.classList.add('warning');
+            }
+            if (this.timers[1] <= 30 && this.timers[1] > 0) {
+                blackTimer.classList.add('warning');
+            }
+            if (this.timers[0] <= 10 && this.timers[0] > 0) {
+                whiteTimer.classList.add('danger');
+            }
+            if (this.timers[1] <= 10 && this.timers[1] > 0) {
+                blackTimer.classList.add('danger');
+            }
         }
     }
 
@@ -192,6 +234,200 @@ class ChessGame {
     }
 
     /**
+     * Сохранить состояние игры
+     */
+    saveGame() {
+        const gameState = {
+            board: this.serializeBoard(),
+            currentPlayer: this.currentPlayer,
+            moveHistory: this.moveHistory,
+            capturedPieces: this.capturedPieces,
+            timers: this.timers,
+            gameOver: this.gameOver,
+            check: this.check,
+            enPassant: this.enPassant,
+            boardFlipped: this.boardFlipped,
+            fogOfWar: this.fogOfWar
+        };
+
+        // Сохраняем в localStorage
+        localStorage.setItem('chessGameSave', JSON.stringify(gameState));
+        
+        // Отправляем на сервер через AJAX
+        this.saveToServer(gameState);
+        
+        alert('Игра сохранена!');
+    }
+
+    /**
+     * Сериализация доски для сохранения
+     */
+    serializeBoard() {
+        const serialized = [];
+        for (let row = 0; row < 8; row++) {
+            const rowData = [];
+            for (let col = 0; col < 8; col++) {
+                const piece = this.board[row][col];
+                if (piece) {
+                    rowData.push({
+                        type: piece.constructor.name,
+                        color: piece.color,
+                        hasMoved: piece.hasMoved,
+                        symbol: piece.symbol
+                    });
+                } else {
+                    rowData.push(null);
+                }
+            }
+            serialized.push(rowData);
+        }
+        return serialized;
+    }
+
+    /**
+     * Десериализация доски из сохранения
+     */
+    deserializeBoard(serialized) {
+        const board = this.createEmptyBoard();
+        const pieceClasses = {
+            'Pawn': Pawn, 'Knight': Knight, 'Bishop': Bishop,
+            'Rook': Rook, 'Queen': Queen, 'King': King
+        };
+
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const pieceData = serialized[row][col];
+                if (pieceData) {
+                    const PieceClass = pieceClasses[pieceData.type];
+                    if (PieceClass) {
+                        const piece = new PieceClass(pieceData.color);
+                        piece.hasMoved = pieceData.hasMoved;
+                        board[row][col] = piece;
+                    }
+                }
+            }
+        }
+        return board;
+    }
+
+    /**
+     * Сохранение на сервер через AJAX
+     */
+    async saveToServer(gameState) {
+        try {
+            const response = await fetch('savegame.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'save',
+                    gameState: gameState
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success) {
+                console.log('Game saved to server');
+            }
+        } catch (error) {
+            console.error('Error saving to server:', error);
+        }
+    }
+
+    /**
+     * Загрузить состояние игры
+     */
+    loadGame() {
+        // Пытаемся загрузить из localStorage
+        const saved = localStorage.getItem('chessGameSave');
+        if (saved) {
+            try {
+                const gameState = JSON.parse(saved);
+                this.loadFromState(gameState);
+                alert('Игра загружена из локального сохранения!');
+                return;
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+            }
+        }
+        
+        // Если нет локального сохранения, пробуем загрузить с сервера
+        this.loadFromServer();
+    }
+
+    /**
+     * Загрузить состояние из объекта
+     */
+    loadFromState(gameState) {
+        this.board = this.deserializeBoard(gameState.board);
+        this.currentPlayer = gameState.currentPlayer;
+        this.moveHistory = gameState.moveHistory || [];
+        this.capturedPieces = gameState.capturedPieces || {0: [], 1: []};
+        this.timers = gameState.timers || {0: 600, 1: 600};
+        this.gameOver = gameState.gameOver || false;
+        this.check = gameState.check || false;
+        this.enPassant = gameState.enPassant || null;
+        this.boardFlipped = gameState.boardFlipped || false;
+        this.fogOfWar = gameState.fogOfWar !== undefined ? gameState.fogOfWar : true;
+        
+        this.selectedPiece = null;
+        this.validMoves = [];
+        this.promotionPending = null;
+        
+        this.updateVisibleCells();
+        this.startTimer();
+        this.drawBoard();
+        this.updateGameInfo();
+    }
+
+    /**
+     * Загрузка с сервера через AJAX
+     */
+    async loadFromServer() {
+        try {
+            const response = await fetch('savegame.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'load'
+                })
+            });
+            
+            const result = await response.json();
+            if (result.success && result.gameState) {
+                this.loadFromState(result.gameState);
+                alert('Игра загружена с сервера!');
+            } else {
+                alert('Нет сохраненной игры на сервере');
+            }
+        } catch (error) {
+            console.error('Error loading from server:', error);
+            alert('Ошибка загрузки с сервера');
+        }
+    }
+
+    /**
+     * Очистить сохраненную игру
+     */
+    clearSavedGame() {
+        localStorage.removeItem('chessGameSave');
+        
+        // Также очищаем на сервере
+        fetch('savegame.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                action: 'clear'
+            })
+        });
+    }
+
+    /**
      * Проверить, видна ли клетка текущему игроку
      */
     isCellVisible(row, col) {
@@ -203,6 +439,8 @@ class ChessGame {
      */
     drawBoard() {
         const canvas = document.getElementById('chess-board');
+        if (!canvas) return;
+        
         const ctx = canvas.getContext('2d');
         const squareSize = 80;
         
@@ -301,29 +539,30 @@ class ChessGame {
         const imageKey = `${color}_${piece.symbol}`;
         const img = this.pieceImages[imageKey];
         
-        if (img && img.complete) {
+        // Используем изображение только если оно загружено
+        if (img && img.complete && img.naturalWidth > 0) {
             // Рисуем изображение с небольшим отступом
             const padding = 5;
             ctx.drawImage(img, x + padding, y + padding, squareSize - padding * 2, squareSize - padding * 2);
         } else {
             // Fallback на символы, если изображение не загружено
-            ctx.fillStyle = piece.color === 0 ? '#ffffff' : '#000000';
-            ctx.strokeStyle = piece.color === 0 ? '#000000' : '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.font = 'bold 48px Times New Roman';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.strokeText(
-                this.getPieceSymbol(piece),
-                x + squareSize / 2,
-                y + squareSize / 2
-            );
-            ctx.fillText(
-                this.getPieceSymbol(piece),
-                x + squareSize / 2,
-                y + squareSize / 2
-            );
+            this.drawPieceSymbol(ctx, piece, x, y, squareSize);
         }
+    }
+
+    /**
+     * Отрисовка символа фигуры (fallback)
+     */
+    drawPieceSymbol(ctx, piece, x, y, squareSize) {
+        ctx.fillStyle = piece.color === 0 ? '#ffffff' : '#000000';
+        ctx.strokeStyle = piece.color === 0 ? '#000000' : '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.font = 'bold 48px Times New Roman';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const symbol = this.getPieceSymbol(piece);
+        ctx.strokeText(symbol, x + squareSize / 2, y + squareSize / 2);
+        ctx.fillText(symbol, x + squareSize / 2, y + squareSize / 2);
     }
 
     /**
@@ -375,34 +614,27 @@ class ChessGame {
                 ctx.fillRect(menuX, pieceY, squareSize, squareSize);
             }
             
-            // Рисуем изображение фигуры в меню
+            // Рисуем фигуру в меню
             const color = this.currentPlayer === 0 ? 'white' : 'black';
             const imageKey = `${color}_${piece.symbol}`;
             const img = this.pieceImages[imageKey];
             
-            if (img && img.complete) {
+            if (img && img.complete && img.naturalWidth > 0) {
                 const padding = 10;
                 ctx.drawImage(img, menuX + padding, pieceY + padding, squareSize - padding * 2, squareSize - padding * 2);
             } else {
                 // Fallback на символы
-                ctx.fillStyle = this.currentPlayer === 0 ? '#FFFFFF' : '#000000';
-                ctx.strokeStyle = this.currentPlayer === 0 ? '#000000' : '#FFFFFF';
-                ctx.lineWidth = 2;
-                ctx.font = 'bold 36px Times New Roman';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                const symbol = this.getPieceSymbol({symbol: piece.symbol, color: this.currentPlayer});
-                ctx.strokeText(symbol, menuX + squareSize/2, pieceY + squareSize/2);
-                ctx.fillText(symbol, menuX + squareSize/2, pieceY + squareSize/2);
+                this.drawPieceSymbol(ctx, {symbol: piece.symbol, color: this.currentPlayer}, menuX, pieceY, squareSize);
             }
             
             // Название фигуры
-            ctx.fillStyle = this.currentPlayer === 0 ? '#FFFFFF' : '#000000';
+            ctx.fillStyle = this.currentPlayer === 1 ? '#000000' : '#FFFFFF';
             ctx.font = '12px Times New Roman';
+            ctx.textAlign = 'center';
             // Позиция названия в зависимости от направления меню
             const nameY = isMenuDown ? 
-                pieceY + squareSize - 20 : 
-                pieceY +10;
+                pieceY + squareSize - 8 : 
+                pieceY + 10;
             ctx.fillText(piece.name, menuX + squareSize/2, nameY);
         });
     }
@@ -426,10 +658,9 @@ class ChessGame {
                           (this.currentPlayer === 0 && this.boardFlipped);
         
         // Область меню
-        const menuStartY = isMenuDown ? menuY - squareSize * 4 : menuY + squareSize ;
-        const menuEndY = isMenuDown ? menuY : menuY + squareSize * 5 ;
+        const menuStartY = isMenuDown ? menuY - squareSize * 4 : menuY + squareSize;
+        const menuEndY = isMenuDown ? menuY : menuY + squareSize * 5;
 
-        
         // Проверяем, был ли клик в области меню
         if (x >= menuX && x <= menuX + squareSize && 
             y >= menuStartY && y <= menuEndY) {
@@ -480,7 +711,7 @@ class ChessGame {
                     const x = col * squareSize;
                     const y = row * squareSize;
                     
-                    if (this.fogImage && this.fogImage.complete) {
+                    if (this.fogImage && this.fogImage.complete && this.fogImage.naturalWidth > 0) {
                         // Рисуем изображение тумана для этой клетки
                         ctx.drawImage(this.fogImage, x, y, squareSize, squareSize);
                     } else {
@@ -916,6 +1147,10 @@ function initGame() {
     game = new ChessGame();
     
     const canvas = document.getElementById('chess-board');
+    if (!canvas) {
+        console.error('Canvas element not found!');
+        return;
+    }
     
     canvas.addEventListener('click', (event) => {
         const rect = canvas.getBoundingClientRect();
@@ -943,8 +1178,7 @@ function initGame() {
             game.promotePawn(validPieces[key]);
         }
     });
-
-    game.updateGameInfo();
+    
 }
 
 /**
@@ -971,6 +1205,39 @@ function toggleFlipBoard() {
 function toggleFogOfWar() {
     if (game) {
         game.toggleFogOfWar();
+    }
+}
+
+/**
+ * Сохранить игру
+ */
+function saveGame() {
+    if (game && !game.gameOver) {
+        game.saveGame();
+    } else {
+        alert('Нет активной игры для сохранения');
+    }
+}
+
+/**
+ * Загрузить игру
+ */
+function loadGame() {
+    if (game) {
+        if (confirm('Загрузить сохраненную игру? Текущий прогресс будет потерян.')) {
+            game.loadGame();
+        }
+    }
+}
+
+/**
+ * Войти в систему
+ */
+function login() {
+    const username = prompt('Введите имя пользователя:');
+    if (username) {
+        // Здесь можно добавить реальную авторизацию
+        alert(`Добро пожаловать, ${username}! Теперь вы можете сохранять игры на сервер.`);
     }
 }
 

@@ -264,7 +264,7 @@ class Queen extends ChessPiece {
     }
 }
 
-/**
+`/**
  * Класс короля
  */
 class King extends ChessPiece {
@@ -315,4 +315,4 @@ class King extends ChessPiece {
 
         return moves;
     }
-}
+}`

@@ -24,7 +24,7 @@ Cкачать фотографии фигур можно с GitHub
 <img width="576" height="293" alt="image" src="https://github.com/user-attachments/assets/50022690-4528-4478-9911-16a85fea363e" />
 </p>
 
-#2. Основная часть
+# 2. Основная часть
 <br>
 
 ## 2.1 Реализация шахматных фигур

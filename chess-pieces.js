@@ -315,4 +315,4 @@ class King extends ChessPiece {
 
         return moves;
     }
-}`
+}

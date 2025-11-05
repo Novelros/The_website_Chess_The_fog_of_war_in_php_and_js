@@ -14,7 +14,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManage
 <img width="235" height="67" alt="image" src="https://github.com/user-attachments/assets/37ae8b27-0afb-46d0-8c2a-866cd2fbf5c9" />
 
 </p>
-#Структура проекта:
+# Структура проекта:
 
 Cкачать фотографии фигур можно с GitHub
 <br>

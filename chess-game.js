@@ -78,12 +78,13 @@ class ChessGame {
                         console.warn(`Не удалось загрузить изображение: images/${color === 'white' ? '0' : '1'}${piece}.png`);
                         checkAllLoaded();
                     };
+                    // Используем ваши файлы с изображениями
                     img.src = `images/${color === 'white' ? '0' : '1'}${piece}.png`;
                     this.pieceImages[`${color}_${piece}`] = img;
                 });
             });
             
-            // Если нет изображений
+            // Если нет изображений для загрузки, сразу резолвим
             if (imagesToLoad === 0) {
                 resolve();
             }
@@ -187,16 +188,16 @@ class ChessGame {
             }
             
             // Предупреждения при малом времени
-            if (this.timers[0] <= 120 && this.timers[0] > 0) {
+            if (this.timers[0] <= 30 && this.timers[0] > 0) {
                 whiteTimer.classList.add('warning');
             }
-            if (this.timers[1] <= 120 && this.timers[1] > 0) {
+            if (this.timers[1] <= 30 && this.timers[1] > 0) {
                 blackTimer.classList.add('warning');
             }
-            if (this.timers[0] <= 60 && this.timers[0] > 0) {
+            if (this.timers[0] <= 10 && this.timers[0] > 0) {
                 whiteTimer.classList.add('danger');
             }
-            if (this.timers[1] <= 60 && this.timers[1] > 0) {
+            if (this.timers[1] <= 10 && this.timers[1] > 0) {
                 blackTimer.classList.add('danger');
             }
         }
@@ -1140,7 +1141,7 @@ class ChessGame {
 let game;
 
 /**
- * Инициализация игры
+ * Инициализация игры с улучшенной обработкой касаний
  */
 function initGame() {
     game = new ChessGame();
@@ -1151,12 +1152,49 @@ function initGame() {
         return;
     }
     
-    canvas.addEventListener('click', (event) => {
+    // Функция для обработки взаимодействия
+    function handleInteraction(clientX, clientY) {
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        const scaleX = canvas.width / rect.width;    // Масштаб по X
+        const scaleY = canvas.height / rect.height;  // Масштаб по Y
+        
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+        
         game.handleClick(x, y);
+    }
+    
+    // Обработчик кликов для компьютеров
+    canvas.addEventListener('click', (event) => {
+        handleInteraction(event.clientX, event.clientY);
     });
+
+    // Обработчики для мобильных устройств
+    canvas.addEventListener('touchstart', (event) => {
+        event.preventDefault();
+        if (event.touches.length === 1) { // Только одиночное касание
+            handleInteraction(event.touches[0].clientX, event.touches[0].clientY);
+        }
+    }, { passive: false });
+
+    // Предотвращаем стандартное поведение жестов
+    document.addEventListener('touchmove', (event) => {
+        if (game.promotionPending) {
+            event.preventDefault();
+        }
+    }, { passive: false });
+
+    // Обновление позиции для меню превращения
+    canvas.addEventListener('touchmove', (event) => {
+        if (game.promotionPending && event.touches.length === 1) {
+            event.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = event.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            game.updatePromotionMouse(x, y);
+        }
+    }, { passive: false });
 
     canvas.addEventListener('mousemove', (event) => {
         if (game.promotionPending) {
@@ -1178,8 +1216,12 @@ function initGame() {
         }
     });
     
+    // Предотвращение контекстного меню на мобильных
+    canvas.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+        return false;
+    });
 }
-
 /**
  * Начать новую игру
  */

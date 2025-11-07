@@ -78,13 +78,12 @@ class ChessGame {
                         console.warn(`Не удалось загрузить изображение: images/${color === 'white' ? '0' : '1'}${piece}.png`);
                         checkAllLoaded();
                     };
-                    // Используем ваши файлы с изображениями
                     img.src = `images/${color === 'white' ? '0' : '1'}${piece}.png`;
                     this.pieceImages[`${color}_${piece}`] = img;
                 });
             });
             
-            // Если нет изображений для загрузки, сразу резолвим
+            // Если нет изображений
             if (imagesToLoad === 0) {
                 resolve();
             }
@@ -188,16 +187,16 @@ class ChessGame {
             }
             
             // Предупреждения при малом времени
-            if (this.timers[0] <= 30 && this.timers[0] > 0) {
+            if (this.timers[0] <= 120 && this.timers[0] > 0) {
                 whiteTimer.classList.add('warning');
             }
-            if (this.timers[1] <= 30 && this.timers[1] > 0) {
+            if (this.timers[1] <= 120 && this.timers[1] > 0) {
                 blackTimer.classList.add('warning');
             }
-            if (this.timers[0] <= 10 && this.timers[0] > 0) {
+            if (this.timers[0] <= 60 && this.timers[0] > 0) {
                 whiteTimer.classList.add('danger');
             }
-            if (this.timers[1] <= 10 && this.timers[1] > 0) {
+            if (this.timers[1] <= 60 && this.timers[1] > 0) {
                 blackTimer.classList.add('danger');
             }
         }

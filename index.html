@@ -14,7 +14,6 @@
             <div id="game-status">
                 <?php
                 session_start();
-                // Простой статус игры, а не AJAX обработчик
                 if (isset($_SESSION['game_status'])) {
                     echo htmlspecialchars($_SESSION['game_status']);
                 } else {
@@ -54,10 +53,10 @@
             </div>
             
             <div id="move-history">
-                <?php
+                <?php  
                 if (isset($_SESSION['move_history'])) {
                     foreach ($_SESSION['move_history'] as $move) {
-                        echo "<div>" . htmlspecialchars($move) . "</div>";
+                        echo "" . htmlspecialchars($move) . "";
                     }
                 }
                 ?>
@@ -77,7 +76,6 @@
         </div>
     </div>
 
-    <!-- Подключаем JavaScript файлы -->
     <script src="chess-pieces.js"></script>
     <script src="chess-game.js"></script>
 </body>

@@ -27,8 +27,8 @@ class ChessGame {
         
         // Таймеры (10 минут в секундах)
         this.timers = {
-            0: 600, // Белые: 10 минут
-            1: 600  // Черные: 10 минут
+            0: 40, // Белые: 10 минут
+            1: 10  // Черные: 10 минут
         };
         this.timerInterval = null;
         this.currentTimer = null;
@@ -188,16 +188,16 @@ class ChessGame {
             }
             
             // Предупреждения при малом времени
-            if (this.timers[0] <= 30 && this.timers[0] > 0) {
+            if (this.timers[0] <= 120 && this.timers[0] > 0) {
                 whiteTimer.classList.add('warning');
             }
-            if (this.timers[1] <= 30 && this.timers[1] > 0) {
+            if (this.timers[1] <= 120 && this.timers[1] > 0) {
                 blackTimer.classList.add('warning');
             }
-            if (this.timers[0] <= 10 && this.timers[0] > 0) {
+            if (this.timers[0] <= 60 && this.timers[0] > 0) {
                 whiteTimer.classList.add('danger');
             }
-            if (this.timers[1] <= 10 && this.timers[1] > 0) {
+            if (this.timers[1] <= 60 && this.timers[1] > 0) {
                 blackTimer.classList.add('danger');
             }
         }

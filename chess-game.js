@@ -27,8 +27,8 @@ class ChessGame {
         
         // Таймеры (10 минут в секундах)
         this.timers = {
-            0: 40, // Белые: 10 минут
-            1: 10  // Черные: 10 минут
+            0: 600, // Белые: 10 минут
+            1: 600  // Черные: 10 минут
         };
         this.timerInterval = null;
         this.currentTimer = null;
